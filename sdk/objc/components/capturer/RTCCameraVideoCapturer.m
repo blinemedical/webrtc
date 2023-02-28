@@ -42,7 +42,7 @@ const int64_t kNanosecondsPerSecond = 1000000000;
   FourCharCode _outputPixelFormat;
   RTCVideoRotation _rotation;
 #if TARGET_OS_IPHONE
-  UIDeviceOrientation _orientation;
+  UIInterfaceOrientation _orientation;
   BOOL _generatingOrientationNotifications;
 #endif
 }
@@ -75,11 +75,11 @@ const int64_t kNanosecondsPerSecond = 1000000000;
     }
     NSNotificationCenter *center = [NSNotificationCenter defaultCenter];
 #if TARGET_OS_IPHONE
-    _orientation = UIDeviceOrientationPortrait;
+    _orientation = UIInterfaceOrientationPortrait;
     _rotation = RTCVideoRotation_90;
     [center addObserver:self
                selector:@selector(deviceOrientationDidChange:)
-                   name:UIDeviceOrientationDidChangeNotification
+                   name:UIApplicationDidChangeStatusBarOrientationNotification
                  object:nil];
     [center addObserver:self
                selector:@selector(handleCaptureSessionInterruption:)
@@ -265,21 +265,19 @@ const int64_t kNanosecondsPerSecond = 1000000000;
     usingFrontCamera = AVCaptureDevicePositionFront == deviceInput.device.position;
   }
   switch (_orientation) {
-    case UIDeviceOrientationPortrait:
+    case UIInterfaceOrientationPortrait:
       _rotation = RTCVideoRotation_90;
       break;
-    case UIDeviceOrientationPortraitUpsideDown:
+    case UIInterfaceOrientationPortraitUpsideDown:
       _rotation = RTCVideoRotation_270;
       break;
-    case UIDeviceOrientationLandscapeLeft:
+    case UIInterfaceOrientationLandscapeRight:
       _rotation = usingFrontCamera ? RTCVideoRotation_180 : RTCVideoRotation_0;
       break;
-    case UIDeviceOrientationLandscapeRight:
+    case UIInterfaceOrientationLandscapeLeft:
       _rotation = usingFrontCamera ? RTCVideoRotation_0 : RTCVideoRotation_180;
       break;
-    case UIDeviceOrientationFaceUp:
-    case UIDeviceOrientationFaceDown:
-    case UIDeviceOrientationUnknown:
+    default:
       // Ignore.
       break;
   }
@@ -521,7 +519,9 @@ const int64_t kNanosecondsPerSecond = 1000000000;
   NSAssert([RTC_OBJC_TYPE(RTCDispatcher) isOnQueueForType:RTCDispatcherTypeCaptureSession],
            @"updateOrientation must be called on the capture queue.");
 #if TARGET_OS_IPHONE
-  _orientation = [UIDevice currentDevice].orientation;
+  dispatch_sync(dispatch_get_main_queue(), ^{
+      _orientation = [[UIApplication sharedApplication] statusBarOrientation];
+  });
 #endif
 }
 
